@@ -497,7 +497,7 @@ async def hago(c, id, server=None):
 
 
 async def pubg(c, id, server=None):
-    """PUBG Mobile via GoPay Games."""
+    """PUBG Mobile via GoPay Games (server opsional)."""
     try:
         r = await c.post(
             "https://gopay.co.id/games/v1/order/user-account",
@@ -568,8 +568,7 @@ GAMES: dict[str, dict[str, Any]] = {
                      "hint_server": "buzzerbeater/001/002"},
     "dragoncity":   {"name": "Dragon City",       "fn": dragoncity,    "need": "id"},
     "hago":         {"name": "Hago",              "fn": hago,          "need": "id"},
-    "pubg":         {"name": "PUBG Mobile",       "fn": pubg,          "need": "id_server",
-                     "hint_server": "zone (opsional)"},
+    "pubg":         {"name": "PUBG Mobile",       "fn": pubg,          "need": "id"},
     "hok":          {"name": "Honor of Kings",    "fn": hok,           "need": "id"},
     "fcmobile":     {"name": "FC Mobile",         "fn": fcmobile,      "need": "id"},
 }
