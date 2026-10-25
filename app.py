@@ -82,7 +82,7 @@ def _coda_ok(data: Any) -> bool:
 
 
 # ═════════════════════════════════════════════════════════════
-# Router game — EXISTING (tidak diubah)
+# Router game — EXISTING
 # ═════════════════════════════════════════════════════════════
 
 async def aov(c, id, server=None):
@@ -321,7 +321,7 @@ async def zzz(c, id, server=None):
 
 
 # ═════════════════════════════════════════════════════════════
-# Router game — BARU (dari valid_game.py)
+# Router game — BARU
 # ═════════════════════════════════════════════════════════════
 
 async def eightball(c, id, server=None):
@@ -536,7 +536,6 @@ async def fcmobile(c, id, server=None):
 GameFn = Callable[[httpx.AsyncClient, str, str | None], Awaitable[dict]]
 
 GAMES: dict[str, dict[str, Any]] = {
-    # ── existing ──
     "aov":  {"name": "Arena of Valor",        "fn": aov,  "need": "id"},
     "codm": {"name": "Call of Duty Mobile",   "fn": codm, "need": "id"},
     "ff":   {"name": "Free Fire",             "fn": ff,   "need": "id"},
@@ -557,8 +556,6 @@ GAMES: dict[str, dict[str, Any]] = {
     "sus":  {"name": "Super Sus",             "fn": sus,  "need": "id"},
     "valo": {"name": "VALORANT",              "fn": valo, "need": "id"},
     "zzz":  {"name": "Zenless Zone Zero",     "fn": zzz,  "need": "id"},
-
-    # ── new ──
     "8ball":        {"name": "8 Ball Pool",       "fn": eightball,     "need": "id"},
     "aethergazer":  {"name": "Aether Gazer",      "fn": aethergazer,   "need": "id"},
     "autochess":    {"name": "Auto Chess",        "fn": autochess,     "need": "id"},
@@ -599,28 +596,17 @@ def run_check(game_key: str, id_: str, server: str | None) -> dict:
 # Routes
 # ═════════════════════════════════════════════════════════════
 
-def _docs() -> dict:
-    return {
-        "name": "Accang",
-        "version": "1.0",
-    }
-
-
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify(_docs())
+    return "?"
 
 
-@app.route("/games", methods=["GET"])
-def games():
+@app.route("/accang", methods=["GET"])
+def accang():
     return jsonify({
         "success": True,
         "count": len(GAMES),
-        "data": [
-            {"code": k, "name": v["name"], "need": v["need"],
-             "hint_server": v.get("hint_server")}
-            for k, v in GAMES.items()
-        ],
+        "games": list(GAMES.keys()),
     })
 
 
@@ -644,13 +630,12 @@ def check():
         return jsonify({
             "success": False,
             "message": "Parameter 'game' dan 'id' wajib diisi.",
-            "docs": "/",
         }), 400
     game = game.lower()
     if game not in GAMES:
         return jsonify({
             "success": False,
-            "message": f"Game '{game}' tidak dikenal. Lihat /games",
+            "message": f"Game '{game}' tidak dikenal.",
         }), 404
     cfg = GAMES[game]
     if cfg["need"] == "id_server" and not server:
@@ -669,7 +654,7 @@ def check_by_path(game: str):
     if game not in GAMES:
         return jsonify({
             "success": False,
-            "message": f"Game '{game}' tidak dikenal. Lihat /games",
+            "message": f"Game '{game}' tidak dikenal.",
         }), 404
     _, id_, server, _ = _parse_inputs()
     if not id_:
