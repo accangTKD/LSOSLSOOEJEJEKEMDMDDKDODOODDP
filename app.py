@@ -601,28 +601,8 @@ def run_check(game_key: str, id_: str, server: str | None) -> dict:
 
 def _docs() -> dict:
     return {
-        "name": "Game ID Validator API",
+        "name": "Accang",
         "version": "1.0",
-        "endpoints": {
-            "/": "Dokumentasi ini",
-            "/games": "Daftar game + kode",
-            "/check?game=<kode>&id=<id>[&server=<server>]":
-                "Cek satu game. Method GET atau POST",
-            "/check/<kode>?id=<id>[&server=<server>]":
-                "Alias path-style",
-        },
-        "params": {
-            "game": "kode game (lihat /games)",
-            "id": "user ID / role ID",
-            "server": "server/zone (hanya untuk game tertentu)",
-        },
-        "examples": {
-            "ml": "/check/ml?id=12345678&server=2001",
-            "gi": "/check/gi?id=812345678",
-            "valo": "/check/valo?id=SomeNickname#TAG",
-            "azurlane": "/check/azurlane?id=123456&server=avrora",
-        },
-        "notes": "Game yang butuh server: la, mcgg, ml, pgr, azurlane, badlanders, basketrio, pubg(optional)",
     }
 
 
