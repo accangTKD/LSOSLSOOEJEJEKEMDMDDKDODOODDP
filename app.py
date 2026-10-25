@@ -4,6 +4,7 @@ warnings.filterwarnings("ignore")
 
 import asyncio
 import json
+import re
 from typing import Any, Awaitable, Callable
 
 import httpx
@@ -49,8 +50,39 @@ def _get_role(data: Any, index: int = 0) -> dict:
     return r if isinstance(r, dict) else {}
 
 
+def _dot_get(source: Any, path: str) -> Any:
+    """Akses nested dict/list via 'a.b.0.c' style path."""
+    current = source
+    for part in path.split("."):
+        if isinstance(current, dict):
+            current = current.get(part)
+        elif isinstance(current, list) and part.isdigit():
+            idx = int(part)
+            current = current[idx] if 0 <= idx < len(current) else None
+        else:
+            return None
+        if current is None:
+            return None
+    return current
+
+
+def _extract_nickname(data: Any, paths: list[str]) -> str | None:
+    for p in paths:
+        v = _dot_get(data, p)
+        if isinstance(v, str) and v:
+            return v
+    return None
+
+
+def _coda_ok(data: Any) -> bool:
+    """Return True if Codashop response indicates success."""
+    if not isinstance(data, dict):
+        return False
+    return data.get("errorCode") in ("", None) and not data.get("errorMsg")
+
+
 # ═════════════════════════════════════════════════════════════
-# Router game
+# Router game — EXISTING (tidak diubah)
 # ═════════════════════════════════════════════════════════════
 
 async def aov(c, id, server=None):
@@ -288,9 +320,223 @@ async def zzz(c, id, server=None):
             "id": id, "server": sn, "name": _get_username(data)}
 
 
+# ═════════════════════════════════════════════════════════════
+# Router game — BARU (dari valid_game.py)
+# ═════════════════════════════════════════════════════════════
+
+async def eightball(c, id, server=None):
+    body = ("user.userId=" + id +
+            "&voucherPricePoint.id=272564"
+            "&voucherPricePoint.price=14000.0000"
+            "&voucherPricePoint.variablePrice=0"
+            "&user.zoneId="
+            "&voucherTypeName=EIGHT_BALL_POOL&shopLang=id_ID")
+    data = await hit_coda(c, body)
+    name = _extract_nickname(data, [
+        "confirmationFields.roles.0.role",
+        "confirmationFields.username",
+    ])
+    if _coda_ok(data) and name:
+        return {"success": True, "game": "8 Ball Pool", "id": id, "name": name}
+    return {"success": False, "message": "Not found"}
+
+
+async def aethergazer(c, id, server=None):
+    body = ("user.userId=" + id +
+            "&voucherPricePoint.id=2"
+            "&voucherPricePoint.price=16650.0"
+            "&voucherPricePoint.variablePrice=0"
+            "&user.zoneId="
+            "&voucherTypeName=547-AETHER_GAZER"
+            "&voucherTypeId=524&gvtId=691&lvtId=11840&pcId=906&shopLang=id_ID")
+    data = await hit_coda(c, body)
+    name = _extract_nickname(data, [
+        "confirmationFields.username",
+        "confirmationFields.roles.0.role",
+    ])
+    if _coda_ok(data) and name:
+        return {"success": True, "game": "Aether Gazer", "id": id, "name": name}
+    return {"success": False, "message": "Not found"}
+
+
+async def autochess(c, id, server=None):
+    body = ("user.userId=" + id +
+            "&voucherPricePoint.id=203879"
+            "&voucherPricePoint.price=150000.0000"
+            "&voucherPricePoint.variablePrice=0"
+            "&user.zoneId="
+            "&voucherTypeName=AUTO_CHESS&shopLang=id_ID")
+    data = await hit_coda(c, body)
+    name = _get_username(data)
+    if _coda_ok(data) and name:
+        return {"success": True, "game": "Auto Chess", "id": id, "name": name}
+    return {"success": False, "message": "Not found"}
+
+
+_AZUR_SERVERS = {
+    "avrora": ("Avrora", "1"), "lexington": ("Lexington", "2"),
+    "sandy": ("Sandy", "3"), "washington": ("Washington", "4"),
+    "amagi": ("Amagi", "5"), "littleenterprise": ("Little Enterprise", "6"),
+}
+
+
+async def azurlane(c, id, server=None):
+    if not server:
+        return {"success": False, "message": "Bad request"}
+    key = re.sub(r"\s+", "", server).lower()
+    if key not in _AZUR_SERVERS:
+        return {"success": False, "message": "Not found"}
+    sn, sv = _AZUR_SERVERS[key]
+    body = ("user.userId=" + id +
+            "&voucherPricePoint.id=99665"
+            "&voucherPricePoint.price=70000.0000"
+            "&voucherPricePoint.variablePrice=0"
+            f"&user.zoneId={sv}"
+            "&voucherTypeName=AZUR_LANE&shopLang=id_ID")
+    data = await hit_coda(c, body)
+    name = _get_username(data)
+    if _coda_ok(data) and name:
+        return {"success": True, "game": "Azur Lane",
+                "id": id, "server": sn, "name": name}
+    return {"success": False, "message": "Not found"}
+
+
+_BADLANDERS_SERVERS = {"global": ("Global", "11001"), "jf": ("JF", "21004")}
+
+
+async def badlanders(c, id, server=None):
+    if not server:
+        return {"success": False, "message": "Bad request"}
+    key = re.sub(r"\s+", "", server).lower()
+    if key not in _BADLANDERS_SERVERS:
+        return {"success": False, "message": "Not found"}
+    sn, sv = _BADLANDERS_SERVERS[key]
+    body = ("user.userId=" + id +
+            "&voucherPricePoint.id=333121"
+            "&voucherPricePoint.price=2300.0000"
+            "&voucherPricePoint.variablePrice=0"
+            f"&user.zoneId={sv}"
+            "&voucherTypeName=BAD_LANDERS&shopLang=id_ID")
+    data = await hit_coda(c, body)
+    name = _get_username(data)
+    if _coda_ok(data) and name:
+        return {"success": True, "game": "Badlanders",
+                "id": id, "server": sn, "name": name}
+    return {"success": False, "message": "Not found"}
+
+
+async def barbarq(c, id, server=None):
+    body = ("user.userId=" + id +
+            "&voucherPricePoint.id=5145"
+            "&voucherPricePoint.price=120000.0000"
+            "&voucherPricePoint.variablePrice=0"
+            "&user.zoneId="
+            "&voucherTypeName=ELECSOUL&shopLang=id_ID")
+    data = await hit_coda(c, body)
+    name = _extract_nickname(data, ["confirmationFields.apiResult",
+                                     "confirmationFields.username"])
+    if _coda_ok(data) and name:
+        return {"success": True, "game": "BarbarQ", "id": id, "name": name}
+    return {"success": False, "message": "Not found"}
+
+
+_BASKETRIO_SERVERS = {
+    "buzzerbeater": ("Buzzer Beater", "2"),
+    "001": ("001", "3"),
+    "002": ("002", "4"),
+}
+
+
+async def basketrio(c, id, server=None):
+    if not server:
+        return {"success": False, "message": "Bad request"}
+    key = re.sub(r"\s+", "", server).lower()
+    if key not in _BASKETRIO_SERVERS:
+        return {"success": False, "message": "Not found"}
+    sn, sv = _BASKETRIO_SERVERS[key]
+    body = ("user.userId=" + id +
+            "&voucherPricePoint.id=147203"
+            "&voucherPricePoint.price=832500.0000"
+            "&voucherPricePoint.variablePrice=0"
+            f"&user.zoneId={sv}"
+            "&voucherTypeName=BASKETRIO&shopLang=id_ID")
+    data = await hit_coda(c, body)
+    name = _get_username(data)
+    if _coda_ok(data) and name:
+        return {"success": True, "game": "Basketrio",
+                "id": id, "server": sn, "name": name}
+    return {"success": False, "message": "Not found"}
+
+
+async def dragoncity(c, id, server=None):
+    body = ("user.userId=" + id +
+            "&voucherPricePoint.id=254206"
+            "&voucherPricePoint.price=65000.0000"
+            "&voucherPricePoint.variablePrice=0"
+            "&user.zoneId="
+            "&voucherTypeName=DRAGON_CITY&shopLang=id_ID")
+    data = await hit_coda(c, body)
+    name = _get_username(data)
+    if _coda_ok(data) and name:
+        return {"success": True, "game": "Dragon City", "id": id, "name": name}
+    return {"success": False, "message": "Not found"}
+
+
+async def hago(c, id, server=None):
+    body = ("user.userId=" + id +
+            "&voucherPricePoint.id=272113"
+            "&voucherPricePoint.price=29700.0000"
+            "&voucherPricePoint.variablePrice=0"
+            "&user.zoneId="
+            "&voucherTypeName=HAGO&shopLang=id_ID")
+    data = await hit_coda(c, body)
+    name = _get_username(data)
+    if _coda_ok(data) and name:
+        return {"success": True, "game": "Hago", "id": id, "name": name}
+    return {"success": False, "message": "Not found"}
+
+
+async def pubg(c, id, server=None):
+    """PUBG Mobile via GoPay Games."""
+    try:
+        r = await c.post(
+            "https://gopay.co.id/games/v1/order/user-account",
+            json={"code": "PUBG_ID",
+                  "data": {"userId": str(id), "zoneId": str(server or "")}},
+            headers={"Content-Type": "application/json",
+                     "Accept": "application/json"},
+        )
+        data = r.json()
+    except Exception:
+        return {"success": False, "message": "Not found"}
+    nick = _extract_nickname(data, [
+        "data.username", "data.userAccount", "data.nickname",
+        "data.name", "username", "userAccount",
+    ])
+    if nick:
+        return {"success": True, "game": "PUBG Mobile",
+                "id": id, "server": server, "name": nick}
+    return {"success": False, "message": "Not found"}
+
+
+async def hok(c, id, server=None):
+    return {"success": False,
+            "message": "Honor of Kings belum didukung endpoint ini."}
+
+
+async def fcmobile(c, id, server=None):
+    return {"success": False,
+            "message": "FC Mobile belum didukung endpoint ini."}
+
+
+# ═════════════════════════════════════════════════════════════
+# Registry
+# ═════════════════════════════════════════════════════════════
+
 GameFn = Callable[[httpx.AsyncClient, str, str | None], Awaitable[dict]]
 
 GAMES: dict[str, dict[str, Any]] = {
+    # ── existing ──
     "aov":  {"name": "Arena of Valor",        "fn": aov,  "need": "id"},
     "codm": {"name": "Call of Duty Mobile",   "fn": codm, "need": "id"},
     "ff":   {"name": "Free Fire",             "fn": ff,   "need": "id"},
@@ -311,6 +557,24 @@ GAMES: dict[str, dict[str, Any]] = {
     "sus":  {"name": "Super Sus",             "fn": sus,  "need": "id"},
     "valo": {"name": "VALORANT",              "fn": valo, "need": "id"},
     "zzz":  {"name": "Zenless Zone Zero",     "fn": zzz,  "need": "id"},
+
+    # ── new ──
+    "8ball":        {"name": "8 Ball Pool",       "fn": eightball,     "need": "id"},
+    "aethergazer":  {"name": "Aether Gazer",      "fn": aethergazer,   "need": "id"},
+    "autochess":    {"name": "Auto Chess",        "fn": autochess,     "need": "id"},
+    "azurlane":     {"name": "Azur Lane",         "fn": azurlane,      "need": "id_server",
+                     "hint_server": "avrora/lexington/sandy/washington/amagi/littleenterprise"},
+    "badlanders":   {"name": "Badlanders",        "fn": badlanders,    "need": "id_server",
+                     "hint_server": "global / jf"},
+    "barbarq":      {"name": "BarbarQ",           "fn": barbarq,       "need": "id"},
+    "basketrio":    {"name": "Basketrio",         "fn": basketrio,     "need": "id_server",
+                     "hint_server": "buzzerbeater/001/002"},
+    "dragoncity":   {"name": "Dragon City",       "fn": dragoncity,    "need": "id"},
+    "hago":         {"name": "Hago",              "fn": hago,          "need": "id"},
+    "pubg":         {"name": "PUBG Mobile",       "fn": pubg,          "need": "id_server",
+                     "hint_server": "zone (opsional)"},
+    "hok":          {"name": "Honor of Kings",    "fn": hok,           "need": "id"},
+    "fcmobile":     {"name": "FC Mobile",         "fn": fcmobile,      "need": "id"},
 }
 
 
@@ -356,8 +620,9 @@ def _docs() -> dict:
             "ml": "/check/ml?id=12345678&server=2001",
             "gi": "/check/gi?id=812345678",
             "valo": "/check/valo?id=SomeNickname#TAG",
+            "azurlane": "/check/azurlane?id=123456&server=avrora",
         },
-        "notes": "Game yang butuh server: la, mcgg, ml, pgr",
+        "notes": "Game yang butuh server: la, mcgg, ml, pgr, azurlane, badlanders, basketrio, pubg(optional)",
     }
 
 
